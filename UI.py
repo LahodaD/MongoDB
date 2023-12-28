@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from tkinter import simpledialog
 
 class App:
 
@@ -343,8 +342,3 @@ class App:
         self.center_window()
         self.create_login_frame()
         self.root.mainloop()
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = App(root)
-    root.mainloop()

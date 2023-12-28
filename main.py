@@ -1,16 +1,37 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from pymongo.mongo_client import MongoClient
+import UI
+from Repositories import ConnectToDatabase as db
+from Repositories import BooksRepository as books_repository
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('Jste susaci')
+    db_client = db.connect_to_mongodb()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    if db_client is not None:
+
+        #TODO: ukazka pouziti knihovny BooksReposiroty pro vlozeni noveho prvku
+        # pak SMAZAT!!!
+        #
+        # novy_prvek = {
+        #     "nazev": "NovyPrvek2",
+        #     "hodnota": 42,
+        #     "popis": "Toto je novy prvek."
+        # }
+        # books_repository.insert_document(db_client, novy_prvek)
+
+        #TODO: ukazka najit_vsechno pak SMAZAT!!!
+        #
+        # for document in books_repository.find_all_documents(db_client):
+        #     print(document)
+
+        #TODO: ukazka find_one pak SMAZAT!!!
+        #
+        # print(books_repository.find_document(db_client, {"Title": "Book1"}))
+
+        root = UI.tk.Tk()
+        app = UI.App(root)
+
+        # start UI mainloop
+        root.mainloop()
+    else:
+        print("Error - something wrong with database")
