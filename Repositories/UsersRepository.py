@@ -27,6 +27,30 @@ def insert_document(db_client, document):
     return result.inserted_id
 
 
+def create_user(db_client, name, surename, birthnumber, address, username, password):
+    user = db_client.Library.Users.find_one({"Username": username})
+    if user is not None:
+        return "Username already exists"
+    user = db_client.Library.Users.find_one({"BirthNumber": birthnumber})
+    if user is not None:
+        return "Birth number already in use"
+
+    passwordHash = hash_password(password)
+    collection = db_client.Library.Users
+    userDocument = {"Name": name,
+                    "Surename": surename,
+                    "BirthNumber": int(birthnumber),
+                    "Address": address,
+                    "Username": username,
+                    "Password": passwordHash,
+                    "Confirmed": False,
+                    "Banned": False,
+                    "Admin": False}
+    result = collection.insert_one(userDocument)
+
+    return result.inserted_id
+
+
 def find_all_documents(db_client):
     return db_client.Library.Users.find()
 
