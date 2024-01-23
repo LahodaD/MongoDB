@@ -28,8 +28,7 @@ class App:
         x = (screen_width//2) -401
         y = (screen_height//2) -140
         self.root.geometry("+{}+{}".format(x, y))
-
-    #Login okno
+    
     #TODO: přidat button pro registraci, přidat okno pro registraci
     def create_login_frame(self):
         self.login_frame = tk.Frame(self.root)
@@ -202,24 +201,24 @@ class App:
             # Open the image using PIL
             img = Image.open(image_path)
             img.thumbnail((160, 160))  # Adjust size if needed
-    
+
             # Convert the PIL Image to a Tkinter PhotoImage
             tk_img = ImageTk.PhotoImage(img)
-    
+
             # Create a new frame for displaying the image (inside add_window)
             image_frame = tk.Frame(add_window)
             image_frame.grid(row=0, column=2, rowspan=6, columnspan=6, padx=5, pady=5, sticky="ne")
-    
+
             # Create a Canvas widget within the new frame to display the image
             canvas = tk.Canvas(image_frame, width=160, height=160)  # Adjust size as needed
             canvas.grid(row=0, column=0, sticky="nw")
-    
+
             # Draw the image on the Canvas
             canvas.create_image(0, 0, anchor="nw", image=tk_img)
-    
+
             # Keep a reference to the PhotoImage to prevent garbage collection
             canvas.image = tk_img
-    
+
         except Exception as e:
             # Handle the case where the image couldn't be loaded
             print(f"Error loading image: {e}")
