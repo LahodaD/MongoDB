@@ -1,10 +1,11 @@
+import base64
 from io import BytesIO
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
 
-from Repositories.BooksRepository import create_book
+from Repositories.BooksRepository import create_book, find_all_documents
 from Repositories import ConnectToDatabase as db
 
 class App:
@@ -19,6 +20,7 @@ class App:
         self.center_window()
         self.create_login_frame()        
         self.image_path = None
+        self.image_references = {}
 
     def center_window(self):
         screen_width = self.root.winfo_screenwidth()
@@ -70,48 +72,57 @@ class App:
     #Admin layout
     def show_admin_layout(self):
         self.login_frame.destroy()
-        admin_frame = tk.Frame(self.root, width=802, height=280)
+        admin_frame = tk.Frame(self.root, width=1405, height=280)
         admin_frame.pack()
 
-        #Pozice tlačítka je řešena později
         logout_button = tk.Button(admin_frame, text="Logout", command=self.logout)
 
-        #Definování sloupců u treeview
-        columns = ("Title", "Author", "Genre", "Copies")
-        self.sort_order = {col: True for col in columns}  #Keep track of sorting order (sestupně/vzestupně)
+        columns = ("Title", "Author", "Genre", "Pages", "Year", "Copies", "Image")
+        self.sort_order = {col: True for col in columns}
 
-        self.admin_tree = ttk.Treeview(admin_frame, columns=columns, show="headings")
+        self.admin_tree = ttk.Treeview(admin_frame, columns=columns, selectmode='browse', show="headings")
 
         for col in columns:
             self.admin_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
-        self.admin_tree.place(x=0,y=40 + 15)
+        self.admin_tree.place(x=0, y=40 + 15)
 
-        logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
+        logout_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth()), y=0)
 
-        #Plnění treeview daty, momentálně plněno z placeholderu, je třeba implementovat
-        #TODO: naplnit nataženými daty z databáze treeview
-        for book in App.books:
-            book_data = book[:4]
-            self.admin_tree.insert("", "end", values=book_data)
+        all_documents = find_all_documents(self.db_client)
 
-        #Delete button maže vybrané prvky v treeview
+        for book in all_documents:
+            title = book["Title"]
+            author = book["Author"]
+            genre = book["Genre"]
+            pages = book["Pages"]
+            year = book["Year"]
+            copies = book["Copies"]
+            picture_binary = book.get("Picture")
+
+            # Convert binary image data to Tkinter PhotoImage using Pillow
+            image_label = "Image Preview"
+            if picture_binary:
+                img = Image.open(BytesIO(picture_binary))
+                img.thumbnail((50, 50))  # Adjust size as needed
+                tk_img = ImageTk.PhotoImage(img)
+
+                # Insert the data into the treeview
+                book_data = (title, author, genre, pages, year, copies, tk_img)
+                self.admin_tree.insert("", "end", values=book_data)
+
         delete_button = tk.Button(admin_frame, text="Delete", command=self.delete_selected, width=6)
-        delete_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=logout_button.winfo_reqheight())
+        delete_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth()), y=logout_button.winfo_reqheight())
 
-        #Klávesa delete maže vybrané prvky v treeview
         self.admin_tree.bind("<Delete>", lambda event: self.delete_selected())
 
-        #Add button přidává knihy nebo zvyšuje počet kopií
         add_button = tk.Button(admin_frame, text="Add Book", command=self.show_add_window)
-        add_button.place(x=(self.admin_tree.winfo_reqwidth()-delete_button.winfo_reqwidth()-add_button.winfo_reqwidth()-5), y=logout_button.winfo_reqheight())
+        add_button.place(x=(self.admin_tree.winfo_reqwidth() - delete_button.winfo_reqwidth() - add_button.winfo_reqwidth() - 5), y=logout_button.winfo_reqheight())
 
-        #Button pro vyhledávání v treeview
         search_button = tk.Button(admin_frame, text="Search", command=self.show_search_window)
-        search_button.place(x=(self.admin_tree.winfo_reqwidth()-delete_button.winfo_reqwidth()-add_button.winfo_reqwidth()-5), y=0)
+        search_button.place(x=(self.admin_tree.winfo_reqwidth() - delete_button.winfo_reqwidth() - add_button.winfo_reqwidth() - 5), y=0)
 
-        #Zrušení omezení vyhledávání
         cancel_search_button = tk.Button(admin_frame, text="Cancel Search", command=self.cancel_search)
-        cancel_search_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()-add_button.winfo_reqwidth()-cancel_search_button.winfo_reqwidth()-15), y=0)
+        cancel_search_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - 15), y=0)
 
 #-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
@@ -366,10 +377,6 @@ class App:
 ######################################################################################################################
 #Customer layout, nedodělán
 #TODO: po dodělání admin layoutu zkopírovat ho a odstranit některé funkce (přidat edit profilu pro customera)
-
-
-
-
 
     def show_customer_layout(self):
         self.login_frame.destroy()
