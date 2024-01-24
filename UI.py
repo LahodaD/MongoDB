@@ -6,10 +6,13 @@ from PIL import Image, ImageTk
 
 from Repositories.BooksRepository import create_book
 from Repositories import ConnectToDatabase as db
+from Repositories import BooksRepository as books_repository
+from Repositories import UsersRepository as users_repository
 
 class App:
-    books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
     db_client = db.connect_to_mongodb()
+    books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
+
 
     def __init__(self, root):
         self.root = root
@@ -71,14 +74,14 @@ class App:
     #Admin layout
     def show_admin_layout(self):
         self.login_frame.destroy()
-        admin_frame = tk.Frame(self.root, width=802, height=280)
+        admin_frame = tk.Frame(self.root, width=1220, height=280)
         admin_frame.pack()
 
         #Pozice tlačítka je řešena později
         logout_button = tk.Button(admin_frame, text="Logout", command=self.logout)
 
         #Definování sloupců u treeview
-        columns = ("Title", "Author", "Genre", "Copies")
+        columns = ("Title", "Author", "Genre", "Pages", "Year", "Copies")
         self.sort_order = {col: True for col in columns}  #Keep track of sorting order (sestupně/vzestupně)
 
         self.admin_tree = ttk.Treeview(admin_frame, columns=columns, show="headings")
@@ -89,11 +92,10 @@ class App:
 
         logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
 
-        #Plnění treeview daty, momentálně plněno z placeholderu, je třeba implementovat
-        #TODO: naplnit nataženými daty z databáze treeview
-        for book in App.books:
-            book_data = book[:4]
-            self.admin_tree.insert("", "end", values=book_data)
+        #Plnění treeview daty z databáze
+        for document in books_repository.find_all_documents(self.db_client):
+            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
+            self.admin_tree.insert("", "end", values=books_data)
 
         #Delete button maže vybrané prvky v treeview
         delete_button = tk.Button(admin_frame, text="Delete", command=self.delete_selected, width=6)
@@ -251,7 +253,7 @@ class App:
         confirm_button.grid(row=3, column=0, columnspan=2, pady=10)
 
     #Funkce pro hledání knihy, kontroluje minimální délku inputů
-    #TODO: udělat select na straně databáze a natáhnout to sem
+    #TODO: ošetřit velikost vstupu
     def search_books(self, title, author, genre, search_window):
         #Kontrola jestli jsou v inputech alespoň 3 znaky nebo jsou null
         if not (len(title) >= 3 or len(title)==0) and (len(author) >= 3 or len(author)==0) and (len(genre) >= 3 or len(genre)==0):
@@ -266,24 +268,29 @@ class App:
         self.admin_tree.delete(*self.admin_tree.get_children())
 
         #Filter books based on search criteria
-        for book in App.books:
-            if (
-                (not title or title.lower() in book[0].lower()) and
-                (not author or author.lower() in book[1].lower()) and
-                (not genre or genre.lower() in book[2].lower())
-            ):
-                self.admin_tree.insert("", "end", values=book)
+        queries = []
+        if(len(title) >= 3):
+           queries.append({"Title": {"$regex": title}})
+        if(len(author) >= 3):
+           queries.append({"Author": {"$regex": author}})
+        if (len(genre) >= 3):
+           queries.append({"Genre": {"$regex": genre}})
+        searchResult = books_repository.find_documents(self.db_client, {"$and": queries})
+        for book in searchResult:
+            book_data = ((book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
+            self.admin_tree.insert("", "end", values=book_data)
+
 
         #Close the search window
         search_window.destroy()
 
     #Funkce cancel search opět zobrazí vše ve výběru
-    #TODO: zde natáhnout opět select všeho co chcem zobrazit bez podmínek
     def cancel_search(self):
         #Clear search criteria and display all books
         self.admin_tree.delete(*self.admin_tree.get_children())
-        for book in App.books:
-            self.admin_tree.insert("", "end", values=book)
+        for document in books_repository.find_all_documents(self.db_client):
+            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
+            self.admin_tree.insert("", "end", values=books_data)
 
     #Funkce pro přidávání knih
     #TODO: přidání knihy do databáze a následné natáhnutí selectu z databáze do treeview (stejné jak u mazání)
@@ -329,7 +336,7 @@ class App:
                     App.books.append(book_data)
             else:
                 # If the book does not exist, add a new row
-                self.admin_tree.insert("", "end", values=(title, author, genre, int(copies)))
+                self.admin_tree.insert("", "end", values=(title, author, genre,int(year), int(pages), int(copies)))
 
                 App.books = []
                 for item in self.admin_tree.get_children():
@@ -398,12 +405,13 @@ class App:
 
         self.customer_tree.pack()
 
-        books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
+        #books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
 
-        for book in books:
-            book_data = book
+        for document in books_repository.find_all_documents(self.db_client):
+            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"]))
             delete_button = tk.Button(customer_frame, text="Delete", command=lambda b=book_data: self.delete_book(b))
-            self.customer_tree.insert("", "end", values=book_data + (delete_button,))
+            self.customer_tree.insert("", "end", values=books_data + (delete_button,))
+
         
 
     def logout(self):

@@ -58,6 +58,8 @@ def find_all_documents(db_client):
 def find_document(db_client, criteria: dict):
     return db_client.Library.Users.find_one(criteria)
 
+def find_documents(db_client, criteria: dict):
+    return db_client.Library.Users.find(criteria)
 
 def delete(db_client, criteria: dict):
     return db_client.Library.Users.delete_one(criteria)

@@ -35,6 +35,9 @@ def find_all_documents(db_client):
 def find_document(db_client, criteria: dict):
     return db_client.Library.Books.find_one(criteria)
 
+def find_documents(db_client, criteria: dict):
+    return db_client.Library.Books.find(criteria)
+
 def delete(db_client, criteria: dict):
     return db_client.Library.Books.delete_one(criteria)
 
