@@ -277,6 +277,8 @@ class App:
            queries.append({"Genre": {"$regex": genre}})
         searchResult = books_repository.find_documents(self.db_client, {"$and": queries})
         for book in searchResult:
+            if(book == None):
+                return
             book_data = ((book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
             self.admin_tree.insert("", "end", values=book_data)
 
