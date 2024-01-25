@@ -275,14 +275,8 @@ class App:
         self.admin_tree.delete(*self.admin_tree.get_children())
 
         #Filter books based on search criteria
-        queries = []
-        if(len(title) >= 3):
-           queries.append({"Title": {"$regex": title}})
-        if(len(author) >= 3):
-           queries.append({"Author": {"$regex": author}})
-        if (len(genre) >= 3):
-           queries.append({"Genre": {"$regex": genre}})
-        searchResult = books_repository.find_documents(self.db_client, {"$and": queries})
+        searchResult = books_repository.search_documents(self.db_client,title,author,genre)
+        #searchResult = books_repository.find_documents(self.db_client, {"$and": queries})
         for book in searchResult:
             if(book == None):
                 return
