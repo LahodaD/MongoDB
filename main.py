@@ -3,6 +3,7 @@ import UI
 from Repositories import ConnectToDatabase as db
 from Repositories import BooksRepository as books_repository
 from Repositories import UsersRepository as users_repository
+from Repositories import BorrowedRepository as borrowed_repository
 
 
 if __name__ == '__main__':
@@ -38,6 +39,14 @@ if __name__ == '__main__':
         #
         #users_repository.create_user(db_client, "Pepa", "Omacka", "0707881010", "Kornvald 12, Praha, Czechia", "Pepa", "1234")
         #books_repository.create_book(db_client,"Kniha", "Daniel Autorsky", "3", "150", "NEMAM", "1859")
+
+        #TODO: ukazka vlození nového vypůjčení
+        #kniha = books_repository.find_document(db_client, {"Title": "Its diffrent Freeman!"})
+        #uzivatel = users_repository.find_document(db_client, {"Username": "kamo"})
+        #print(kniha["Title"])
+        #print(uzivatel["Username"])
+        #borrowed_repository.create_borrowed(db_client,uzivatel["_id"],kniha["_id"])
+
 
         root = UI.tk.Tk()
         app = UI.App(root)

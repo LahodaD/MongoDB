@@ -51,6 +51,7 @@ def create_user(db_client, name, surename, birthnumber, address, username, passw
                     "Confirmed": False,
                     "Banned": False,
                     "Admin": False,
+                    "Borrowed": 0,
                     "History": []}
     result = collection.insert_one(userDocument)
 
