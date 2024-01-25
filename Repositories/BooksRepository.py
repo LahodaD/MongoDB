@@ -1,4 +1,5 @@
 from bson.binary import Binary
+import re
 def insert_document(db_client, document):
     """
     Vloží nový dokument do dané kolekce.
@@ -28,6 +29,20 @@ def create_book(db_client, title, author, genre, pages, year, copies, picture):
     result = collection.insert_one(book_document)
 
     return result.inserted_id
+
+def search_documents(db_client, title, author, genre ):
+    queries = []
+    if (len(title) >= 3):
+        reTitle = re.compile(re.escape(title), re.IGNORECASE)
+        queries.append({"Title": {"$regex": reTitle}})
+    if (len(author) >= 3):
+        reAuthor = re.compile(re.escape(author), re.IGNORECASE)
+        queries.append({"Author": {"$regex": reAuthor}})
+    if (len(genre) >= 3):
+        reGenre = re.compile(re.escape(genre), re.IGNORECASE)
+        queries.append({"Genre": {"$regex": reGenre}})
+    searchResult = find_documents(db_client, {"$and": queries})
+    return searchResult
 
 def find_all_documents(db_client):
     return db_client.Library.Books.find()
