@@ -6,6 +6,11 @@ def hash_password(password):
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed_password
 
+def check_passwd(passwd, hashedPassdw):
+    if bcrypt.checkpw(passwd.encode('utf-8'), hashedPassdw):
+        return True
+    return False
+
 
 def insert_document(db_client, document):
     """
