@@ -54,17 +54,24 @@ class App:
 
     #Login funkce
     def login(self):
+        global currentUser
         username = self.entry_username.get()
         password = self.entry_password.get()
-
-        #Placeholder pro login, je třeba implementovat
-        #TODO: implementovat ověřování loginů oproti databázi
-        if username == "admin" and password == "admin":
-            self.show_admin_layout()
-        elif username == "customer" and password == "customer":
-            self.show_customer_layout()
+        user = users_repository.find_document(self.db_client,{"Username": username})
+        if not user:
+            return False
+        if user["Banned"]:
+            return False
+        if users_repository.check_passwd(password, user["Password"]):
+            currentUser = user
+            if user["Admin"]:
+                self.show_admin_layout()
+            else:
+                self.show_customer_layout()
         else:
+            print("does not match")
             messagebox.showerror("Login Failed", "Invalid username or password")
+
 
 #Konec inicializace UI a loginu
 ######################################################################################################################
@@ -411,7 +418,7 @@ class App:
 
         for document in books_repository.find_all_documents(self.db_client):
             books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"]))
-            delete_button = tk.Button(customer_frame, text="Delete", command=lambda b=book_data: self.delete_book(b))
+            delete_button = tk.Button(customer_frame, text="Delete", command=lambda b=books_data: self.delete_book(b))
             self.customer_tree.insert("", "end", values=books_data + (delete_button,))
 
         
