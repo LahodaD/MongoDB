@@ -45,7 +45,8 @@ def create_user(db_client, name, surename, birthnumber, address, username, passw
                     "Password": passwordHash,
                     "Confirmed": False,
                     "Banned": False,
-                    "Admin": False}
+                    "Admin": False,
+                    "History": []}
     result = collection.insert_one(userDocument)
 
     return result.inserted_id
