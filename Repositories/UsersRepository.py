@@ -1,5 +1,5 @@
 import bcrypt
-
+from bson.objectid import ObjectId
 
 def hash_password(password):
     salt = bcrypt.gensalt()
@@ -65,6 +65,9 @@ def find_all_documents(db_client):
 def find_document(db_client, criteria: dict):
     return db_client.Library.Users.find_one(criteria)
 
+def find_document_by_id(db_client, user_id):
+    return db_client.Library.Users.find_one({"_id": ObjectId(user_id)})
+
 def find_documents(db_client, criteria: dict):
     return db_client.Library.Users.find(criteria)
 
@@ -74,3 +77,6 @@ def delete(db_client, criteria: dict):
 
 def update(db_client, criteria: dict, new_document):
     db_client.Library.Users.update_one(criteria, new_document)
+
+def update_by_user_id(db_client, user_id, new_document):
+    db_client.Library.Users.update_one({"_id": ObjectId(user_id)}, new_document)
