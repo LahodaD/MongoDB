@@ -8,6 +8,7 @@ from Repositories.BooksRepository import create_book
 from Repositories import ConnectToDatabase as db
 from Repositories import BooksRepository as books_repository
 from Repositories import UsersRepository as users_repository
+from Repositories import BorrowedRepository as borrowed_repository
 
 class App:
     db_client = db.connect_to_mongodb()
@@ -212,10 +213,24 @@ class App:
     def borrow_book(self):
         #Seznam vybraných řádků
         selected_items = self.admin_tree.selection()
-        #Mazání jednotlivých itemů
+        borrowed_books_of_current_user = users_repository.find_document_by_id(self.db_client,currentUser["_id"])
+        #kontrola počtu vypůjčených knih
+        if borrowed_books_of_current_user["Borrowed"] >= 6:
+            print("too many borrowed books")
+            return False
+
+        #vypůjčování knížky
         for item in selected_items:
             id_of_book = tuple(self.admin_tree.item(item, "values"))[0]
-            print(books_repository.find_document_by_id(self.db_client, id_of_book))
+            #kontrola jestli ji již má vypůjčenou
+            borrowed = borrowed_repository.find_document_by_ids(self.db_client, currentUser["_id"], id_of_book)
+            if borrowed is not None:
+                print("already borrowed")
+                return False
+            print("borrowing")
+            #vypujčování
+            borrowed_repository.create_borrowed(self.db_client, currentUser["_id"], id_of_book)
+            users_repository.update_by_user_id(self.db_client,  currentUser["_id"], {"$set": {"Borrowed": borrowed_repository.check_number_of_borrowed_books(self.db_client,currentUser["_id"]) }})
 
 
 
