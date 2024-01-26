@@ -138,21 +138,30 @@ class App:
         logout_button = tk.Button(admin_frame, text="Logout", command=self.logout)
 
         #Definování sloupců u treeview
-        columns = ("Title", "Author", "Genre", "Pages", "Year", "Copies")
+        columns = ("Id","Title", "Author", "Genre", "Pages", "Year", "Copies")
         self.sort_order = {col: True for col in columns}  #Keep track of sorting order (sestupně/vzestupně)
 
         self.admin_tree = ttk.Treeview(admin_frame, columns=columns, show="headings")
 
         for col in columns:
             self.admin_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id":
+                self.admin_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            self.admin_tree.column(col, stretch="yes", minwidth=0, width=200)
+
         self.admin_tree.place(x=0,y=40 + 15)
+
+
 
         logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
 
         #Plnění treeview daty z databáze
         for document in books_repository.find_all_documents(self.db_client):
-            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
+            books_data = ((document["_id"],document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
             self.admin_tree.insert("", "end", values=books_data)
+
 
         #Delete button maže vybrané prvky v treeview
         delete_button = tk.Button(admin_frame, text="Delete", command=self.delete_selected, width=6)
@@ -177,6 +186,10 @@ class App:
         user_info_button = tk.Button(admin_frame, text="User info", command=self.show_user_info)
         user_info_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()-add_button.winfo_reqwidth()-cancel_search_button.winfo_reqwidth()-user_info_button.winfo_reqwidth()-20), y=0)
 
+        #půjčení knihy
+        borrow_book_button = tk.Button(admin_frame, text="Borrow book", command=self.borrow_book)
+        borrow_book_button.place(x=( self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - 15),
+                                 y=logout_button.winfo_reqheight())
 #-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
 #-------------------------------------------------------------------------------------------------------------------------
@@ -194,6 +207,16 @@ class App:
         for item in self.admin_tree.get_children():
             book_data = tuple(self.admin_tree.item(item, "values"))
             App.books.append(book_data)
+
+
+    def borrow_book(self):
+        #Seznam vybraných řádků
+        selected_items = self.admin_tree.selection()
+        #Mazání jednotlivých itemů
+        for item in selected_items:
+            id_of_book = tuple(self.admin_tree.item(item, "values"))[0]
+            print(books_repository.find_document_by_id(self.db_client, id_of_book))
+
 
 
     #Třídění treeview, první sestupně, po druhém kliku vzestupně atd.

@@ -1,4 +1,5 @@
 from bson.binary import Binary
+from bson.objectid import ObjectId
 import re
 def insert_document(db_client, document):
     """
@@ -49,6 +50,10 @@ def find_all_documents(db_client):
 
 def find_document(db_client, criteria: dict):
     return db_client.Library.Books.find_one(criteria)
+
+def find_document_by_id(db_client, id):
+    object_id = ObjectId(id)
+    return db_client.Library.Books.find_one({"_id": object_id})
 
 def find_documents(db_client, criteria: dict):
     return db_client.Library.Books.find(criteria)
