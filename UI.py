@@ -227,11 +227,25 @@ class App:
             if borrowed is not None:
                 print("already borrowed")
                 return False
+            if books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") <= 0:
+                print("not enough copies")
+                return False
             print("borrowing")
             #vypujčování
             borrowed_repository.create_borrowed(self.db_client, currentUser["_id"], id_of_book)
+            #přepis počtu kopií
+            books_repository.update_by_book_id(self.db_client, id_of_book, {"$set": {"Copies" : books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") - 1}})
+            #přepis počtu vypůjčených knih u usera
             users_repository.update_by_user_id(self.db_client,  currentUser["_id"], {"$set": {"Borrowed": borrowed_repository.check_number_of_borrowed_books(self.db_client,currentUser["_id"]) }})
-
+            #načtení historie
+            user_history = users_repository.get_value_of_field_by_id(self.db_client, currentUser["_id"], "History")
+            #zapsání do historie lokálně
+            user_history.append(tuple(self.admin_tree.item(item, "values"))[1])
+            print(user_history)
+            #nahrání historie na DB
+            users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {"History": user_history}})
+        #refresh
+        self.cancel_search()
 
 
     #Třídění treeview, první sestupně, po druhém kliku vzestupně atd.
@@ -372,7 +386,7 @@ class App:
         for book in searchResult:
             if(book == None):
                 return
-            book_data = ((book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
+            book_data = ((book["_id"],book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
             self.admin_tree.insert("", "end", values=book_data)
 
 
@@ -384,7 +398,7 @@ class App:
         #Clear search criteria and display all books
         self.admin_tree.delete(*self.admin_tree.get_children())
         for document in books_repository.find_all_documents(self.db_client):
-            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
+            books_data = ((document["_id"],document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
             self.admin_tree.insert("", "end", values=books_data)
 
     #Funkce pro přidávání knih

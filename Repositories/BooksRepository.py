@@ -63,3 +63,11 @@ def delete(db_client, criteria: dict):
 
 def update(db_client, criteria: dict, new_document):
     db_client.Library.Books.update_one(criteria, new_document)
+
+def update_by_book_id(db_client, book_id, new_document):
+    db_client.Library.Books.update_one({"_id": ObjectId(book_id)}, new_document)
+
+def get_value_of_field_by_id(db_client, book_id, field_name: str):
+    temporery_document = find_document_by_id(db_client, book_id)
+    return temporery_document[field_name]
+
