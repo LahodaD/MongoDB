@@ -80,3 +80,8 @@ def update(db_client, criteria: dict, new_document):
 
 def update_by_user_id(db_client, user_id, new_document):
     db_client.Library.Users.update_one({"_id": ObjectId(user_id)}, new_document)
+
+
+def get_value_of_field_by_id(db_client, user_id, field_name: str):
+    temporery_document = find_document_by_id(db_client, user_id)
+    return temporery_document[field_name]
