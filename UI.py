@@ -52,6 +52,9 @@ class App:
         self.login_button = tk.Button(self.login_frame, text="Login", command=self.login)
         self.login_button.grid(row=2, columnspan=2)
 
+        self.register_button = tk.Button(self.login_frame, text="Register", command=self.show_registration_window)
+        self.register_button.grid(row=3, columnspan=2)
+
     #Login funkce
     def login(self):
         global currentUser
@@ -72,6 +75,53 @@ class App:
             print("does not match")
             messagebox.showerror("Login Failed", "Invalid username or password")
 
+
+    def show_registration_window(self):
+        self.registration_window = tk.Toplevel(self.root)
+        self.registration_window.title("Registration")
+
+        self.label_name = tk.Label(self.registration_window, text="Name:")
+        self.label_surname = tk.Label(self.registration_window, text="Surname:")
+        self.label_birthdate = tk.Label(self.registration_window, text="Birthdate:")
+        self.label_adress = tk.Label(self.registration_window, text="Adress:")
+        self.label_reg_username = tk.Label(self.registration_window, text="Username:")
+        self.label_reg_password = tk.Label(self.registration_window, text="Password:")
+
+        self.entry_name = tk.Entry(self.registration_window)
+        self.entry_surname = tk.Entry(self.registration_window)
+        self.entry_birthdate = tk.Entry(self.registration_window)
+        self.entry_adress = tk.Entry(self.registration_window)
+        self.entry_reg_username = tk.Entry(self.registration_window)
+        self.entry_reg_password = tk.Entry(self.registration_window, show="*")
+
+        self.label_name.grid(row=0, column=0)
+        self.label_surname.grid(row=1, column=0)
+        self.label_birthdate.grid(row=2, column=0)
+        self.label_adress.grid(row=3, column=0)
+        self.label_reg_username.grid(row=4, column=0)
+        self.label_reg_password.grid(row=5, column=0)
+
+        self.entry_name.grid(row=0, column=1)
+        self.entry_surname.grid(row=1, column=1)
+        self.entry_birthdate.grid(row=2, column=1)
+        self.entry_adress.grid(row=3, column=1)
+        self.entry_reg_username.grid(row=4, column=1)
+        self.entry_reg_password.grid(row=5, column=1)
+
+        register_button = tk.Button(self.registration_window, text="Register", command=self.register)
+        register_button.grid(row=6, columnspan=2)
+
+    def register(self):
+        #TODO: naházet inputy do DB
+        name = self.entry_name.get()
+        surname = self.entry_surname.get()
+        birthdate = self.entry_birthdate.get()
+        adress = self.entry_adress.get()
+        username = self.entry_reg_username.get()
+        password = self.entry_reg_password.get()
+
+        # Zavření okna registrace
+        self.registration_window.destroy()
 
 #Konec inicializace UI a loginu
 ######################################################################################################################
@@ -122,6 +172,10 @@ class App:
         #Zrušení omezení vyhledávání
         cancel_search_button = tk.Button(admin_frame, text="Cancel Search", command=self.cancel_search)
         cancel_search_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()-add_button.winfo_reqwidth()-cancel_search_button.winfo_reqwidth()-15), y=0)
+
+        #Zobrazení okna s informacemi uživatele
+        user_info_button = tk.Button(admin_frame, text="User info", command=self.show_user_info)
+        user_info_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()-add_button.winfo_reqwidth()-cancel_search_button.winfo_reqwidth()-user_info_button.winfo_reqwidth()-20), y=0)
 
 #-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
@@ -371,6 +425,100 @@ class App:
         error_window.title("Error")
         tk.Label(error_window, text=message).pack()
         tk.Button(error_window, text="OK", command=error_window.destroy).pack()
+
+    def show_user_info(self):
+        self.info_window = tk.Toplevel(self.root)
+        self.info_window.title("User information")
+
+        label_name = tk.Label(self.info_window, text="Name:")
+        label_surname = tk.Label(self.info_window, text="Surname:")
+        label_birthdate = tk.Label(self.info_window, text="Birthdate:")
+        label_adress = tk.Label(self.info_window, text="Adress:")
+        label_info_username = tk.Label(self.info_window, text="Username:")
+        label_info_password = tk.Label(self.info_window, text="Password:")
+
+        entry_name = tk.Entry(self.info_window)
+        entry_surname = tk.Entry(self.info_window)
+        entry_birthdate = tk.Entry(self.info_window)
+        entry_adress = tk.Entry(self.info_window)
+        entry_info_username = tk.Entry(self.info_window)
+        entry_info_password = tk.Entry(self.info_window, show="*")
+
+        label_name.grid(row=0, column=0)
+        label_surname.grid(row=1, column=0)
+        label_birthdate.grid(row=2, column=0)
+        label_adress.grid(row=3, column=0)
+        label_info_username.grid(row=4, column=0)
+        label_info_password.grid(row=5, column=0)
+
+        entry_name.grid(row=0, column=1)
+        entry_surname.grid(row=1, column=1)
+        entry_birthdate.grid(row=2, column=1)
+        entry_adress.grid(row=3, column=1)
+        entry_info_username.grid(row=4, column=1)
+        entry_info_password.grid(row=5, column=1)
+
+        #TODO: zobrazit info uzivatele
+        #Místo "" hodit co info z DB nebo tabulky (prozatím jsou tam fešné placeholdery)
+        entry_name.insert(0, "Tak přijíždí poslední kovboj")
+        entry_surname.insert(0, "sombrero vmáčklé do čela")
+        entry_birthdate.insert(0, "zchvácená herka líně kráčí")
+        entry_adress.insert(0, "jako by dál nést ho nechtěla")
+        entry_info_username.insert(0, "tak přijíždí poslední kovboj")
+        #Password pole je necháno prázné
+
+        confirm_button = tk.Button(self.info_window, text="Confirm", command=lambda: self.check_changes(
+                entry_name.get(),
+                entry_surname.get(),
+                entry_birthdate.get(),
+                entry_info_username.get(),
+                entry_info_password.get()
+            ))
+        confirm_button.grid(row=6, columnspan=2)
+
+    def check_changes(self, name, surname, birthdate, info_username, info_password):
+        #TODO: implementovat zmeny infa o uzivately
+        #Je tu jen hodne hodne hruby nastrel
+        if any([
+            name != "" and name != "kontrola oproti datum z DB nebo tab",
+            surname != "" and surname != "kontrola oproti datum z DB nebo tab",
+            birthdate != "" and birthdate != "kontrola oproti datum z DB nebo tab",
+            info_username != "" and info_username != "kontrola oproti datum z DB nebo tab",
+            info_password != "kontrola oproti datum z DB nebo tab",
+        ]):
+            username = "pepa omáčka"
+            # Changes were made, show confirmation message
+            confirmation_message = f"Do you want to apply changes for user {username}?"
+            result = messagebox.askyesnocancel("Confirmation", confirmation_message)
+
+            if result is not None:
+                if result:  # Yes
+                    if any([
+                        name == "",
+                        surname == "",
+                        birthdate == "",
+                        info_username == ""#,
+                        #info_password == "",
+                    ]):
+                        self.show_error_message("All inputs must be filled.")
+                    else:
+                        #neconecodb = name
+                        #App.user_data[0]['surname'] = surname
+                        #App.user_data[0]['birthdate'] = birthdate
+                        #App.user_data[0]['username'] = info_username
+                        #App.user_data[0]['password'] = info_password
+                        #Zde prepsat data viz komenticky hore
+
+                        print(f"User data updated for user {name}")
+                        self.info_window.destroy()
+                        
+                elif not result:  # No
+                    self.info_window.destroy()
+                #else:
+                    #show_user_info.destroy()
+        else:
+            self.info_window.destroy()
+            
 
 
 #Konec admin layoutu a funkcí
