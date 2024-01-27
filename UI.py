@@ -225,10 +225,15 @@ class App:
     def borrow_book(self):
         #Seznam vybraných řádků
         selected_items = self.admin_tree.selection()
-        borrowed_books_of_current_user = users_repository.find_document_by_id(self.db_client,currentUser["_id"])
+        current_user_info = users_repository.find_document_by_id(self.db_client,currentUser["_id"])
         #kontrola počtu vypůjčených knih
-        if borrowed_books_of_current_user["Borrowed"] >= 6:
+        if current_user_info["Borrowed"] >= 6:
             print("too many borrowed books")
+            messagebox.showerror("Too many borrowed books", "You have too many borrowed books (6 books)")
+            return False
+        if not current_user_info["Confirmed"]:
+            print("not confirmed")
+            messagebox.showerror("Not confirmed", "Your account is not confirmed")
             return False
 
         #vypůjčování knížky
@@ -238,9 +243,11 @@ class App:
             borrowed = borrowed_repository.find_document_by_ids(self.db_client, currentUser["_id"], id_of_book)
             if borrowed is not None:
                 print("already borrowed")
+                messagebox.showerror("Already borrowed", "You have a copie of this book already borrowed")
                 return False
             if books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") <= 0:
                 print("not enough copies")
+                messagebox.showerror("Not enough copies", "Not enough copies to borrow")
                 return False
             print("borrowing")
             #vypujčování
