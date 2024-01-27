@@ -29,11 +29,17 @@ def find_document(db_client, criteria: dict):
 def find_document_by_ids(db_client, user_id, book_id):
     return db_client.Library.Borrowed.find_one({"UserID": ObjectId(user_id), "BookID": ObjectId(book_id)})
 
+def find_documents_by_user_id(db_client, user_id):
+    return db_client.Library.Borrowed.find({"UserID": ObjectId(user_id)})
+
 def find_documents(db_client, criteria: dict):
     return db_client.Library.Borrowed.find(criteria)
 
 def delete(db_client, criteria: dict):
     return db_client.Library.Borrowed.delete_one(criteria)
+
+def delete_by_id(db_client, borrowed_id):
+    return db_client.Library.Borrowed.delete_one({"_id": ObjectId(borrowed_id)})
 
 def update(db_client, criteria: dict, new_document):
     db_client.Library.Borrowed.update_one(criteria, new_document)

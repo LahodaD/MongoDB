@@ -191,7 +191,19 @@ class App:
         borrow_book_button = tk.Button(admin_frame, text="Borrow book", command=self.borrow_book)
         borrow_book_button.place(x=( self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - 15),
                                  y=logout_button.winfo_reqheight())
-#-------------------------------------------------------------------------------------------------------------------------
+
+        #view půjčených knih
+        borrow_view_button = tk.Button(admin_frame, text="Borrowed books", command=self.show_borrowed_layout)
+        borrow_view_button.place(x=( self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - -user_info_button.winfo_reqwidth()- borrow_book_button.winfo_reqwidth() - borrow_view_button.winfo_reqwidth()),
+                                 y=logout_button.winfo_reqheight())
+
+        # Zobrazení okna s informacemi uživatele
+        users_button = tk.Button(admin_frame, text="Users", command=self.show_users_layout)
+        users_button.place(x=(
+                    self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - user_info_button.winfo_reqwidth() - users_button.winfo_reqwidth()- 20),
+                               y=0)
+
+    #-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
 #-------------------------------------------------------------------------------------------------------------------------
 
@@ -213,10 +225,15 @@ class App:
     def borrow_book(self):
         #Seznam vybraných řádků
         selected_items = self.admin_tree.selection()
-        borrowed_books_of_current_user = users_repository.find_document_by_id(self.db_client,currentUser["_id"])
+        current_user_info = users_repository.find_document_by_id(self.db_client,currentUser["_id"])
         #kontrola počtu vypůjčených knih
-        if borrowed_books_of_current_user["Borrowed"] >= 6:
+        if current_user_info["Borrowed"] >= 6:
             print("too many borrowed books")
+            messagebox.showerror("Too many borrowed books", "You have too many borrowed books (6 books)")
+            return False
+        if not current_user_info["Confirmed"]:
+            print("not confirmed")
+            messagebox.showerror("Not confirmed", "Your account is not confirmed")
             return False
 
         #vypůjčování knížky
@@ -226,9 +243,11 @@ class App:
             borrowed = borrowed_repository.find_document_by_ids(self.db_client, currentUser["_id"], id_of_book)
             if borrowed is not None:
                 print("already borrowed")
+                messagebox.showerror("Already borrowed", "You have a copie of this book already borrowed")
                 return False
             if books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") <= 0:
                 print("not enough copies")
+                messagebox.showerror("Not enough copies", "Not enough copies to borrow")
                 return False
             print("borrowing")
             #vypujčování
@@ -575,6 +594,142 @@ class App:
 
 #Konec admin layoutu a funkcí
 ######################################################################################################################
+    def show_borrowed_layout(self):
+        borrowed_window = tk.Toplevel(self.root)
+        borrowed_window.title("Borrowed Book")
+        borrowed_window.geometry("1220x280")
+        borrowed_window.minsize(1220, 280)
+
+        #Pozice tlačítka je řešena později
+        borrowed_return_button = tk.Button(borrowed_window, text="Return", command=self.return_book)
+
+        #Definování sloupců u treeview
+        columns = ("Id","UserID", "BookID", "Title", "Author", "Genre", "Year")
+        self.sort_order = {col: True for col in columns}  #Keep track of sorting order (sestupně/vzestupně)
+
+        self.borrowed_tree = ttk.Treeview(borrowed_window, columns=columns, show="headings")
+
+        for col in columns:
+            self.borrowed_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id" or col == "UserID" or col == "BookID":
+                self.borrowed_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            self.borrowed_tree.column(col, stretch="yes", minwidth=0, width=200)
+
+        self.borrowed_tree.place(x=0,y=40 + 15)
+
+
+
+        borrowed_return_button.place(x=(self.borrowed_tree.winfo_reqwidth()-borrowed_return_button.winfo_reqwidth()),y=0)
+
+        #Plnění treeview daty z databáze
+        for document in borrowed_repository.find_documents_by_user_id(self.db_client,currentUser["_id"]):
+            book_data = books_repository.find_document_by_id(self.db_client,document["BookID"] )
+            books_data = ((document["_id"],document["UserID"], document["BookID"], book_data["Title"], book_data["Author"], book_data["Genre"], book_data["Year"]))
+            self.borrowed_tree.insert("", "end", values=books_data)
+
+
+        #Delete button maže vybrané prvky v treeview
+        borrowed_refresh_button = tk.Button(borrowed_window, text="Refresh", command=self.borrowed_refresh, width=6)
+        borrowed_refresh_button.place(x=(self.borrowed_tree.winfo_reqwidth()-borrowed_return_button.winfo_reqwidth()),y=borrowed_return_button.winfo_reqheight())
+
+
+
+# -------------------------------------------------------------------------------------------------------------------------
+# Konec borrowed layoutu, níže jsou funkce pro borrowed layout
+# -------------------------------------------------------------------------------------------------------------------------
+    def return_book(self):
+        # Seznam vybraných řádků
+        selected_items = self.borrowed_tree.selection()
+
+        # vracení knížky
+        for item in selected_items:
+            id_of_book = tuple(self.borrowed_tree.item(item, "values"))[2]
+            print(id_of_book)
+            id_of_borrowed  = tuple(self.borrowed_tree.item(item, "values"))[0]
+            print(id_of_borrowed)
+            copies_of_book = books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies")
+            print(copies_of_book)
+            copies_of_book = copies_of_book + 1
+            # přepis počtu kopií
+            books_repository.update_by_book_id(self.db_client, id_of_book, {"$set": {"Copies":copies_of_book}})
+            #mazání vypůjčení
+            borrowed_repository.delete_by_id(self.db_client, id_of_borrowed)
+
+            # přepis počtu vypůjčených knih u usera
+            users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {
+                "Borrowed": borrowed_repository.check_number_of_borrowed_books(self.db_client, currentUser["_id"])}})
+        # refresh
+        self.borrowed_tree.delete(*self.borrowed_tree.get_children())
+        for document in borrowed_repository.find_documents_by_user_id(self.db_client, currentUser["_id"]):
+            book_data = books_repository.find_document_by_id(self.db_client, document["BookID"])
+            books_data = ((
+            document["_id"], document["UserID"], document["BookID"], book_data["Title"], book_data["Author"],
+            book_data["Genre"], book_data["Year"]))
+            self.borrowed_tree.insert("", "end", values=books_data)
+
+
+    def borrowed_refresh(self):
+        self.borrowed_tree.delete(*self.borrowed_tree.get_children())
+        for document in borrowed_repository.find_documents_by_user_id(self.db_client, currentUser["_id"]):
+            book_data = books_repository.find_document_by_id(self.db_client, document["BookID"])
+            books_data = ((
+            document["_id"], document["UserID"], document["BookID"], book_data["Title"], book_data["Author"],
+            book_data["Genre"], book_data["Year"]))
+            self.borrowed_tree.insert("", "end", values=books_data)
+
+        # Konec borrow layoutu a funkcí
+        ######################################################################################################################
+
+    def show_users_layout(self):
+        users_window = tk.Toplevel(self.root)
+        users_window.title("Users Book")
+        users_window.geometry("1220x280")
+        users_window.minsize(1220, 280)
+
+        # Pozice tlačítka je řešena později
+        users_confirm_button = tk.Button(users_window, text="Confirm", command=self.logout)
+
+        # Definování sloupců u treeview
+        columns = ("Id", "Name", "Surename", "Birth number", "Address", "Username", "Confirmed", "Banned")
+        self.sort_order = {col: True for col in columns}  # Keep track of sorting order (sestupně/vzestupně)
+
+        self.users_tree = ttk.Treeview(users_window, columns=columns, show="headings")
+
+        for col in columns:
+            self.users_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id":
+                self.users_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            if col == "Confirmed" or col == "Banned":
+                self.users_tree.column(col, stretch="no", minwidth=0, width=80)
+                continue
+            self.users_tree.column(col, stretch="yes", minwidth=0, width=200)
+
+        self.users_tree.place(x=0, y=40 + 15)
+
+        users_confirm_button.place(
+            x=(self.users_tree.winfo_reqwidth() - users_confirm_button.winfo_reqwidth()), y=0)
+
+        # Plnění treeview daty z databáze
+        for document in users_repository.find_all_documents(self.db_client):
+            users_data = ((
+            document["_id"], document["Name"], document["Surename"], document["BirthNumber"], document["Address"],
+            document["Username"], document["Confirmed"], document["Banned"]))
+            self.users_tree.insert("", "end", values=users_data)
+
+         # Delete button maže vybrané prvky v treeview
+        delete_button = tk.Button(users_window, text="Delete", command=self.delete_selected, width=6)
+        delete_button.place(x=(self.users_tree.winfo_reqwidth() - users_confirm_button.winfo_reqwidth()),
+                                y=users_confirm_button.winfo_reqheight())
+
+
+    # -------------------------------------------------------------------------------------------------------------------------
+    # Konec borrowed layoutu, níže jsou funkce pro borrowed layout
+    # -------------------------------------------------------------------------------------------------------------------------
+
 #Customer layout, nedodělán
 #TODO: po dodělání admin layoutu zkopírovat ho a odstranit některé funkce (přidat edit profilu pro customera)
 
