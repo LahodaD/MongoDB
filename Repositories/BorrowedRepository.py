@@ -32,6 +32,15 @@ def find_document_by_ids(db_client, user_id, book_id):
 def find_documents_by_user_id(db_client, user_id):
     return db_client.Library.Borrowed.find({"UserID": ObjectId(user_id)})
 
+def find_documents_by_book_id(db_client, book_id):
+    return db_client.Library.Borrowed.find({"BookID": ObjectId(book_id)})
+
+def find_document_by_user_id(db_client, user_id):
+    return db_client.Library.Borrowed.find_one({"UserID": ObjectId(user_id)})
+
+def find_document_by_book_id(db_client, book_id):
+    return db_client.Library.Borrowed.find_one({"BookID": ObjectId(book_id)})
+
 def find_documents(db_client, criteria: dict):
     return db_client.Library.Borrowed.find(criteria)
 

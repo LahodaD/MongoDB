@@ -74,6 +74,8 @@ def find_documents(db_client, criteria: dict):
 def delete(db_client, criteria: dict):
     return db_client.Library.Users.delete_one(criteria)
 
+def delete_by_id(db_client, user_id):
+    return db_client.Library.Users.delete_one({"_id": ObjectId(user_id)})
 
 def update(db_client, criteria: dict, new_document):
     db_client.Library.Users.update_one(criteria, new_document)
