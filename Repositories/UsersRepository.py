@@ -58,6 +58,33 @@ def create_user(db_client, name, surename, birthnumber, address, username, passw
     return result.inserted_id
 
 
+def create_user_admin(db_client, name, surename, birthnumber, address, username, password):
+    user = db_client.Library.Users.find_one({"Username": username})
+    if user is not None:
+        return "Username already exists"
+    user = db_client.Library.Users.find_one({"BirthNumber": birthnumber})
+    if user is not None:
+        return "Birth number already in use"
+
+    passwordHash = hash_password(password)
+    collection = db_client.Library.Users
+    userDocument = {"Name": name,
+                    "Surename": surename,
+                    "BirthNumber": int(birthnumber),
+                    "Address": address,
+                    "Username": username,
+                    "Password": passwordHash,
+                    "Confirmed": True,
+                    "Banned": False,
+                    "Admin": False,
+                    "Borrowed": 0,
+                    "History": []}
+    result = collection.insert_one(userDocument)
+
+    return result.inserted_id
+
+
+
 def find_all_documents(db_client):
     return db_client.Library.Users.find()
 
@@ -82,6 +109,18 @@ def update(db_client, criteria: dict, new_document):
 
 def update_by_user_id(db_client, user_id, new_document):
     db_client.Library.Users.update_one({"_id": ObjectId(user_id)}, new_document)
+
+
+def edit_by_user_id(db_client, user_id, name, surname, birthnumber, address, username, password):
+    newPassword = hash_password(password)
+    db_client.Library.Users.update_one({"_id": ObjectId(user_id)}, {"$set": {"Name": name, "Surename": surname, "BirthNumber": int(birthnumber),
+                                                                             "Address": address, "Username": username, "Password": newPassword,
+                                                                             "Confirmed": False}})
+
+def edit_by_user_id_no_passwd(db_client, user_id, name, surname, birthnumber, address, username):
+    db_client.Library.Users.update_one({"_id": ObjectId(user_id)}, {"$set": {"Name": name, "Surename": surname, "BirthNumber": int(birthnumber),
+                                                                             "Address": address, "Username": username,
+                                                                             "Confirmed": False}})
 
 
 def get_value_of_field_by_id(db_client, user_id, field_name: str):
