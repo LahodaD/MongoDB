@@ -83,7 +83,7 @@ class App:
 
         self.label_name = tk.Label(self.registration_window, text="Name:")
         self.label_surname = tk.Label(self.registration_window, text="Surname:")
-        self.label_birthdate = tk.Label(self.registration_window, text="Birthdate:")
+        self.label_birthdate = tk.Label(self.registration_window, text="Birthnumber:")
         self.label_adress = tk.Label(self.registration_window, text="Adress:")
         self.label_reg_username = tk.Label(self.registration_window, text="Username:")
         self.label_reg_password = tk.Label(self.registration_window, text="Password:")
@@ -121,6 +121,11 @@ class App:
         username = self.entry_reg_username.get()
         password = self.entry_reg_password.get()
 
+        if not (len(name) >= 1) and (len(surname) >= 1) and (len(birthdate) >= 1) and (len(adress) >= 1) and (len(username) >= 1) and (len(password) >= 1):
+            self.show_error_message("Each input has to have atleast 3 characters or be empty.")
+            return
+
+        users_repository.create_user(self.db_client,name,surname,birthdate,adress,username,password)
         # Zavření okna registrace
         self.registration_window.destroy()
 
@@ -391,11 +396,11 @@ class App:
     def search_books(self, title, author, genre, search_window):
         #Kontrola jestli jsou v inputech alespoň 3 znaky nebo jsou null
         if not (len(title) >= 3 or len(title)==0) and (len(author) >= 3 or len(author)==0) and (len(genre) >= 3 or len(genre)==0):
-            self.show_error_message("Each input has to have atleast 3 characters or be empty.")
+            messagebox.showerror("Filed needs to be 3 or more", "Filed needs to be 3 or more characters")
             return
         #Kontrola jestli všechny inputy nejsou null
         if (len(title)==0 and len(author)==0 and len(genre)==0):
-            self.show_error_message("No valid inputs for search.")
+            messagebox.showerror("No valid input", "No valid inputs for search")
             return
         
         #Clear existing items in the treeview
@@ -533,35 +538,42 @@ class App:
 
         #TODO: zobrazit info uzivatele
         #Místo "" hodit co info z DB nebo tabulky (prozatím jsou tam fešné placeholdery)
-        entry_name.insert(0, "Tak přijíždí poslední kovboj")
-        entry_surname.insert(0, "sombrero vmáčklé do čela")
-        entry_birthdate.insert(0, "zchvácená herka líně kráčí")
-        entry_adress.insert(0, "jako by dál nést ho nechtěla")
-        entry_info_username.insert(0, "tak přijíždí poslední kovboj")
+        user_info = users_repository.find_document_by_id(self.db_client, currentUser["_id"])
+        entry_name.insert(0, user_info["Name"])
+        entry_surname.insert(0, user_info["Surename"])
+        entry_birthdate.insert(0, user_info["BirthNumber"])
+        entry_adress.insert(0, user_info["Address"])
+        entry_info_username.insert(0, user_info["Username"])
         #Password pole je necháno prázné
 
         confirm_button = tk.Button(self.info_window, text="Confirm", command=lambda: self.check_changes(
                 entry_name.get(),
                 entry_surname.get(),
                 entry_birthdate.get(),
+                entry_adress.get(),
                 entry_info_username.get(),
                 entry_info_password.get()
             ))
         confirm_button.grid(row=6, columnspan=2)
 
-    def check_changes(self, name, surname, birthdate, info_username, info_password):
+
+    def check_changes(self, name, surname, birthdate,adress, info_username, info_password):
         #TODO: implementovat zmeny infa o uzivately
+        user_info = users_repository.find_document_by_id(self.db_client, currentUser["_id"])
         #Je tu jen hodne hodne hruby nastrel
         if any([
-            name != "" and name != "kontrola oproti datum z DB nebo tab",
-            surname != "" and surname != "kontrola oproti datum z DB nebo tab",
-            birthdate != "" and birthdate != "kontrola oproti datum z DB nebo tab",
-            info_username != "" and info_username != "kontrola oproti datum z DB nebo tab",
-            info_password != "kontrola oproti datum z DB nebo tab",
+            name != "",
+            surname != "",
+            birthdate != "",
+            adress != "",
+            info_username != ""
         ]):
-            username = "pepa omáčka"
+            if info_username != user_info["Username"]:
+                user = self.db_client.Library.Users.find_one({"Username": info_username})
+                if user is not None:
+                    return "Username already exists"
             # Changes were made, show confirmation message
-            confirmation_message = f"Do you want to apply changes for user {username}?"
+            confirmation_message = f"Do you want to apply changes for user {info_username}?"
             result = messagebox.askyesnocancel("Confirmation", confirmation_message)
 
             if result is not None:
@@ -575,14 +587,12 @@ class App:
                     ]):
                         self.show_error_message("All inputs must be filled.")
                     else:
-                        #neconecodb = name
-                        #App.user_data[0]['surname'] = surname
-                        #App.user_data[0]['birthdate'] = birthdate
-                        #App.user_data[0]['username'] = info_username
-                        #App.user_data[0]['password'] = info_password
-                        #Zde prepsat data viz komenticky hore
+                        if info_password == "":
+                            users_repository.edit_by_user_id_no_passwd(self.db_client, currentUser["_id"], name, surname, birthdate, adress, info_username)
+                        else:
+                            users_repository.edit_by_user_id(self.db_client, currentUser["_id"], name, surname, birthdate, adress, info_username, info_password)
 
-                        print(f"User data updated for user {name}")
+                        print(f"User data updated for user {info_username}")
                         self.info_window.destroy()
                         
                 elif not result:  # No
@@ -735,7 +745,7 @@ class App:
                                 y=users_confirm_button.winfo_reqheight())
 
         #Add button přidává knihy nebo zvyšuje počet kopií
-        users_edit_button = tk.Button(users_window, text="Edit", command=self.users_edit)
+        users_edit_button = tk.Button(users_window, text="Edit", command=self.show_selected_user_info)
         users_edit_button.place(x=(self.users_tree.winfo_reqwidth()-users_delete_button.winfo_reqwidth()-users_edit_button.winfo_reqwidth()-5), y=users_confirm_button.winfo_reqheight())
 
         #Button pro vyhledávání v treeview
@@ -801,9 +811,6 @@ class App:
 
         return False
 
-    def users_edit(self):
-        #TODO: dodelat edit
-        return False
 
     def users_bann(self):
         selected_items = self.users_tree.selection()
@@ -876,47 +883,353 @@ class App:
         self.cancel_search()
         return False
 
+
+
+# kopie registrace uživatele
+
     def users_create_user(self):
-        #TODO: dodelat create user
-        return False
+        self.user_create_window = tk.Toplevel(self.root)
+        self.user_create_window.title("User creation")
+
+        self.label_name = tk.Label(self.user_create_window, text="Name:")
+        self.label_surname = tk.Label(self.user_create_window, text="Surname:")
+        self.label_birthdate = tk.Label(self.user_create_window, text="Birthnumber:")
+        self.label_adress = tk.Label(self.user_create_window, text="Adress:")
+        self.label_reg_username = tk.Label(self.user_create_window, text="Username:")
+        self.label_reg_password = tk.Label(self.user_create_window, text="Password:")
+
+        self.entry_name = tk.Entry(self.user_create_window)
+        self.entry_surname = tk.Entry(self.user_create_window)
+        self.entry_birthdate = tk.Entry(self.user_create_window)
+        self.entry_adress = tk.Entry(self.user_create_window)
+        self.entry_reg_username = tk.Entry(self.user_create_window)
+        self.entry_reg_password = tk.Entry(self.user_create_window, show="*")
+
+        self.label_name.grid(row=0, column=0)
+        self.label_surname.grid(row=1, column=0)
+        self.label_birthdate.grid(row=2, column=0)
+        self.label_adress.grid(row=3, column=0)
+        self.label_reg_username.grid(row=4, column=0)
+        self.label_reg_password.grid(row=5, column=0)
+
+        self.entry_name.grid(row=0, column=1)
+        self.entry_surname.grid(row=1, column=1)
+        self.entry_birthdate.grid(row=2, column=1)
+        self.entry_adress.grid(row=3, column=1)
+        self.entry_reg_username.grid(row=4, column=1)
+        self.entry_reg_password.grid(row=5, column=1)
+
+        register_button = tk.Button(self.user_create_window, text="Register", command=self.register)
+        register_button.grid(row=6, columnspan=2)
+
+    def register(self):
+        name = self.entry_name.get()
+        surname = self.entry_surname.get()
+        birthdate = self.entry_birthdate.get()
+        adress = self.entry_adress.get()
+        username = self.entry_reg_username.get()
+        password = self.entry_reg_password.get()
+
+        if not (len(name) >= 1) and (len(surname) >= 1) and (len(birthdate) >= 1) and (len(adress) >= 1) and (len(username) >= 1) and (len(password) >= 1):
+            messagebox.showerror("Everything must be filled out", "Everything must be filled out")
+            return
+
+        users_repository.create_user_admin(self.db_client,name,surname,birthdate,adress,username,password)
+        self.users_refresh()
+        # Zavření okna registrace
+        self.user_create_window.destroy()
+
+#kopie editace vlastníc udajů
+
+    def show_selected_user_info(self):
+        self.selected_info_window = tk.Toplevel(self.root)
+        self.selected_info_window.title("User information")
+
+        label_name = tk.Label(self.selected_info_window, text="Name:")
+        label_surname = tk.Label(self.selected_info_window, text="Surname:")
+        label_birthdate = tk.Label(self.selected_info_window, text="Birthdate:")
+        label_adress = tk.Label(self.selected_info_window, text="Adress:")
+        label_info_username = tk.Label(self.selected_info_window, text="Username:")
+        label_info_password = tk.Label(self.selected_info_window, text="Password:")
+
+        entry_name = tk.Entry(self.selected_info_window)
+        entry_surname = tk.Entry(self.selected_info_window)
+        entry_birthdate = tk.Entry(self.selected_info_window)
+        entry_adress = tk.Entry(self.selected_info_window)
+        entry_info_username = tk.Entry(self.selected_info_window)
+        entry_info_password = tk.Entry(self.selected_info_window, show="*")
+
+        label_name.grid(row=0, column=0)
+        label_surname.grid(row=1, column=0)
+        label_birthdate.grid(row=2, column=0)
+        label_adress.grid(row=3, column=0)
+        label_info_username.grid(row=4, column=0)
+        label_info_password.grid(row=5, column=0)
+
+        entry_name.grid(row=0, column=1)
+        entry_surname.grid(row=1, column=1)
+        entry_birthdate.grid(row=2, column=1)
+        entry_adress.grid(row=3, column=1)
+        entry_info_username.grid(row=4, column=1)
+        entry_info_password.grid(row=5, column=1)
+
+        selected_items = self.users_tree.selection()
+        id_of_user = 0
+        # změna statusu bannování
+        for item in selected_items:
+            id_of_user = tuple(self.users_tree.item(item, "values"))[0]
+
+        # Místo "" hodit co info z DB nebo tabulky (prozatím jsou tam fešné placeholdery)
+        user_info = users_repository.find_document_by_id(self.db_client, id_of_user)
+        entry_name.insert(0, user_info["Name"])
+        entry_surname.insert(0, user_info["Surename"])
+        entry_birthdate.insert(0, user_info["BirthNumber"])
+        entry_adress.insert(0, user_info["Address"])
+        entry_info_username.insert(0, user_info["Username"])
+        # Password pole je necháno prázné
+
+        confirm_button = tk.Button(self.selected_info_window, text="Confirm", command=lambda: self.check_changes_of_selected(
+            entry_name.get(),
+            entry_surname.get(),
+            entry_birthdate.get(),
+            entry_adress.get(),
+            entry_info_username.get(),
+            entry_info_password.get()
+        ))
+        confirm_button.grid(row=6, columnspan=2)
+
+    def check_changes_of_selected(self, name, surname, birthdate, adress, info_username, info_password):
+        selected_items = self.users_tree.selection()
+        id_of_user = 0
+        # změna statusu bannování
+        for item in selected_items:
+            id_of_user = tuple(self.users_tree.item(item, "values"))[0]
+        user_info = users_repository.find_document_by_id(self.db_client, id_of_user)
+        # Je tu jen hodne hodne hruby nastrel
+        if any([
+            name != "",
+            surname != "",
+            birthdate != "",
+            adress != "",
+            info_username != ""
+        ]):
+            if info_username != user_info["Username"]:
+                user = self.db_client.Library.Users.find_one({"Username": info_username})
+                if user is not None:
+                    return "Username already exists"
+            # Changes were made, show confirmation message
+            confirmation_message = f"Do you want to apply changes for user {info_username}?"
+            result = messagebox.askyesnocancel("Confirmation", confirmation_message)
+
+            if result is not None:
+                if result:  # Yes
+                    if any([
+                        name == "",
+                        surname == "",
+                        birthdate == "",
+                        info_username == ""  # ,
+                        # info_password == "",
+                    ]):
+                        self.show_error_message("All inputs must be filled.")
+                    else:
+                        if info_password == "":
+                            users_repository.edit_by_user_id_no_passwd(self.db_client, id_of_user, name,
+                                                                       surname, birthdate, adress, info_username)
+                        else:
+                            users_repository.edit_by_user_id(self.db_client, id_of_user, name, surname,
+                                                             birthdate, adress, info_username, info_password)
+
+                        print(f"User data updated for user {info_username}")
+                        self.selected_info_window.destroy()
+                        self.users_refresh()
+
+                elif not result:  # No
+                    self.selected_info_window.destroy()
+                # else:
+                # show_user_info.destroy()
+        else:
+            self.selected_info_window.destroy()
+
+
+
+
+
+
+
+
 #Customer layout, nedodělán
 #TODO: po dodělání admin layoutu zkopírovat ho a odstranit některé funkce (přidat edit profilu pro customera)
 
 
     def show_customer_layout(self):
         self.login_frame.destroy()
-        customer_frame = tk.Frame(self.root)
+        customer_frame = tk.Frame(self.root, width=1220, height=280)
         customer_frame.pack()
+
         label = tk.Label(customer_frame, text="Welcome, Customer!")
         label.pack()
+
         logout_button = tk.Button(customer_frame, text="Logout", command=self.logout)
         logout_button.pack()
 
         search_label = tk.Label(customer_frame, text="Search Books:")
         search_label.pack()
 
-        search_entry = tk.Entry(customer_frame)
-        search_entry.pack()
-
-        search_button = tk.Button(customer_frame, text="Search", command=lambda: self.search_books(search_entry.get()))
+        search_button = tk.Button(customer_frame, text="Search", command=self.customer_show_search_window)
         search_button.pack()
 
-        columns = ("Title", "Author", "Genre", "Copies", "Action")
+        cancel_search_button = tk.Button(customer_frame, text="Cancel Search/ Refresh", command=self.customer_cancel_search)
+        cancel_search_button.pack()
+
+
+        # Zobrazení okna s informacemi uživatele
+        user_info_button = tk.Button(customer_frame, text="User info", command=self.show_user_info)
+        user_info_button.pack()
+
+
+        borrow_book_button = tk.Button(customer_frame, text="Borrow book", command=self.customer_borrow_book)
+        borrow_book_button.pack()
+
+
+        borrow_view_button = tk.Button(customer_frame, text="Borrowed books", command=self.show_borrowed_layout)
+        borrow_view_button.pack()
+
+        columns = ("Id", "Title", "Author", "Genre", "Pages", "Year", "Copies")
         self.customer_tree = ttk.Treeview(customer_frame, columns=columns, show="headings")
 
         for col in columns:
-            self.customer_tree.heading(col, text=col)
+            self.customer_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id":
+                self.customer_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            self.customer_tree.column(col, stretch="yes", minwidth=0, width=200)
 
         self.customer_tree.pack()
 
         #books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
-
+        # Plnění treeview daty z databáze
         for document in books_repository.find_all_documents(self.db_client):
-            books_data = ((document["Title"], document["Author"], document["Genre"], document["Pages"]))
-            delete_button = tk.Button(customer_frame, text="Delete", command=lambda b=books_data: self.delete_book(b))
-            self.customer_tree.insert("", "end", values=books_data + (delete_button,))
+            books_data = ((document["_id"], document["Title"], document["Author"], document["Genre"], document["Pages"],
+                           document["Year"], document["Copies"]))
+            self.customer_tree.insert("", "end", values=books_data)
 
-        
+
+    def customer_borrow_book(self):
+        # Seznam vybraných řádků
+        selected_items = self.customer_tree.selection()
+        current_user_info = users_repository.find_document_by_id(self.db_client, currentUser["_id"])
+        # kontrola počtu vypůjčených knih
+        if current_user_info["Borrowed"] >= 6:
+            print("too many borrowed books")
+            messagebox.showerror("Too many borrowed books", "You have too many borrowed books (6 books)")
+            return False
+        if not current_user_info["Confirmed"]:
+            print("not confirmed")
+            messagebox.showerror("Not confirmed", "Your account is not confirmed")
+            return False
+
+        # vypůjčování knížky
+        for item in selected_items:
+            id_of_book = tuple(self.customer_tree.item(item, "values"))[0]
+            # kontrola jestli ji již má vypůjčenou
+            borrowed = borrowed_repository.find_document_by_ids(self.db_client, currentUser["_id"], id_of_book)
+            if borrowed is not None:
+                print("already borrowed")
+                messagebox.showerror("Already borrowed", "You have a copie of this book already borrowed")
+                return False
+            if books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") <= 0:
+                print("not enough copies")
+                messagebox.showerror("Not enough copies", "Not enough copies to borrow")
+                return False
+            print("borrowing")
+            # vypujčování
+            borrowed_repository.create_borrowed(self.db_client, currentUser["_id"], id_of_book)
+            # přepis počtu kopií
+            books_repository.update_by_book_id(self.db_client, id_of_book, {"$set": {
+                "Copies": books_repository.get_value_of_field_by_id(self.db_client, id_of_book, "Copies") - 1}})
+            # přepis počtu vypůjčených knih u usera
+            users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {
+                "Borrowed": borrowed_repository.check_number_of_borrowed_books(self.db_client, currentUser["_id"])}})
+            # načtení historie
+            user_history = users_repository.get_value_of_field_by_id(self.db_client, currentUser["_id"], "History")
+            # zapsání do historie lokálně
+            user_history.append(tuple(self.customer_tree.item(item, "values"))[1])
+            print(user_history)
+            # nahrání historie na DB
+            users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {"History": user_history}})
+        # refresh
+        self.customer_cancel_search()
+
+    def customer_show_search_window(self):
+        search_window = tk.Toplevel(self.root)
+        search_window.title("Search Books")
+
+        title_label = tk.Label(search_window, text="Title:")
+        title_label.grid(row=0, column=0, padx=5, pady=5)
+        title_entry = tk.Entry(search_window)
+        title_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        author_label = tk.Label(search_window, text="Author:")
+        author_label.grid(row=1, column=0, padx=5, pady=5)
+        author_entry = tk.Entry(search_window)
+        author_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        genre_label = tk.Label(search_window, text="Genre:")
+        genre_label.grid(row=2, column=0, padx=5, pady=5)
+        genre_entry = tk.Entry(search_window)
+        genre_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        # Tlačítko confirm vezme inputy a  zavolá funkci search_books
+        confirm_button = tk.Button(search_window, text="Confirm", command=lambda: self.customer_search_books(
+            title_entry.get(), author_entry.get(), genre_entry.get(), search_window))
+        confirm_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+        # Funkce pro hledání knihy, kontroluje minimální délku inputů
+        # TODO: ošetřit velikost vstupu
+
+    def customer_search_books(self, title, author, genre, search_window):
+        # Kontrola jestli jsou v inputech alespoň 3 znaky nebo jsou null
+        if not (len(title) >= 3 or len(title) == 0) and (len(author) >= 3 or len(author) == 0) and (
+                len(genre) >= 3 or len(genre) == 0):
+            messagebox.showerror("Filed needs to be 3 or more", "Filed needs to be 3 or more characters")
+            return
+        # Kontrola jestli všechny inputy nejsou null
+        if (len(title) == 0 and len(author) == 0 and len(genre) == 0):
+            messagebox.showerror("No valid input", "No valid inputs for search")
+            return
+
+        # Clear existing items in the treeview
+        self.customer_tree.delete(*self.customer_tree.get_children())
+
+        # Filter books based on search criteria
+        searchResult = books_repository.search_documents(self.db_client, title, author, genre)
+        # searchResult = books_repository.find_documents(self.db_client, {"$and": queries})
+        for book in searchResult:
+            if (book == None):
+                return
+            book_data = (
+            (book["_id"], book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
+            self.customer_tree.insert("", "end", values=book_data)
+
+        # Close the search window
+        search_window.destroy()
+
+        # Funkce cancel search opět zobrazí vše ve výběru
+
+    def customer_cancel_search(self):
+        # Clear search criteria and display all books
+        self.customer_tree.delete(*self.customer_tree.get_children())
+        for document in books_repository.find_all_documents(self.db_client):
+            books_data = ((document["_id"], document["Title"], document["Author"], document["Genre"], document["Pages"],
+                           document["Year"], document["Copies"]))
+            self.customer_tree.insert("", "end", values=books_data)
+
+
+
+
+
+
 
     def logout(self):
         self.root.destroy()
