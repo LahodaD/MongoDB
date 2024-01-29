@@ -10,6 +10,7 @@ from Repositories import ConnectToDatabase as db
 from Repositories import BooksRepository as books_repository
 from Repositories import UsersRepository as users_repository
 from Repositories import BorrowedRepository as borrowed_repository
+from Repositories import IORepository as io_repository
 
 class App:
     db_client = db.connect_to_mongodb()
@@ -134,7 +135,7 @@ class App:
 ######################################################################################################################
 #Admin layout a funkce s ním spojené
 #TODO: přidat button zobrazující list čekajících úprav profilu a nových registrací, přidat dvojklikem možnost rozbalení knihy a upravení jejich parametrů
-    
+        
     #Admin layout
     def show_admin_layout(self):
         self.login_frame.destroy()
@@ -202,10 +203,22 @@ class App:
         users_button.place(x=(
                     self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - user_info_button.winfo_reqwidth() - users_button.winfo_reqwidth()- 20),
                                y=0)
+        #import dat databaze
+        import_button = tk.Button(admin_frame, text="Import", command=self.import_data)
+        import_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - user_info_button.winfo_reqwidth() - users_button.winfo_reqwidth() - search_button.winfo_reqwidth() - 90), y=0)
 
-    #-------------------------------------------------------------------------------------------------------------------------
+        #export dat databaze
+        export_button = tk.Button(admin_frame, text="Export", command=self.export_data)
+        export_button.place(x=(self.admin_tree.winfo_reqwidth() - borrow_book_button.winfo_reqwidth() - borrow_view_button.winfo_reqwidth() - add_button.winfo_reqwidth() - delete_button.winfo_reqwidth() - 75), y=logout_button.winfo_reqheight())
+
+#-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
 #-------------------------------------------------------------------------------------------------------------------------
+    def import_data(self):
+        io_repository.import_collections_from_json(self.db_client, "./Backups/DatabaseBackup.json")
+
+    def export_data(self):
+        io_repository.export_all_collections_to_json(self.db_client, "./Backups/DatabaseBackup.json")
 
     #Vymaže vybranou knihu z treeview
     #TODO: implementovat mazání z databáze
