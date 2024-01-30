@@ -838,7 +838,42 @@ class App:
 
 
     def users_show_history(self):
-        return False
+        selected_items = self.users_tree.selection()
+        user_name = None
+        history = []
+        for item in selected_items:
+            id_of_user =  tuple(self.users_tree.item(item, "values"))[0]
+            print(id_of_user)
+
+            document = users_repository.find_document_by_id(self.db_client, id_of_user)
+            history = document.get("History", [])
+            user_name = document.get("Name", None)
+
+        users_window = tk.Toplevel(self.root)
+        users_window.title("Borrowed History")
+        users_window.geometry("400x280")
+        users_window.minsize(400, 280)
+
+        columns = ("User_name", "Book title")
+        self.sort_order = {col: True for col in columns}  # Keep track of sorting order (sestupně/vzestupně)
+
+        self.history_tree = ttk.Treeview(users_window, columns=columns, show="headings")
+
+        for col in columns:
+            self.history_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id" or col == "UserID" or col == "BookID":
+                self.history_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            self.history_tree.column(col, stretch="yes", minwidth=0, width=200)
+
+        self.history_tree.place(x=0,y=40 + 15)
+
+        for document in history:
+            history_data = ((
+            user_name, document))
+            self.history_tree.insert("", "end", values=history_data)
+
     def users_confirm(self):
         selected_items = self.users_tree.selection()
 
@@ -1192,11 +1227,37 @@ class App:
             self.customer_tree.insert("", "end", values=books_data)
 
 
-
-
-
     def customer_show_history(self):
-        return False
+
+        current_user_info = users_repository.find_document_by_id(self.db_client, currentUser["_id"])
+        history = current_user_info.get("History", [])
+        user_name = current_user_info.get("Name", None)
+
+        users_window = tk.Toplevel(self.root)
+        users_window.title("Borrowed History")
+        users_window.geometry("400x280")
+        users_window.minsize(400, 280)
+
+        columns = ("User_name", "Book title")
+        self.sort_order = {col: True for col in columns}  # Keep track of sorting order (sestupně/vzestupně)
+
+        self.history_tree = ttk.Treeview(users_window, columns=columns, show="headings")
+
+        for col in columns:
+            self.history_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
+        for col in columns:
+            if col == "Id" or col == "UserID" or col == "BookID":
+                self.history_tree.column(col, stretch="no", minwidth=0, width=0)
+                continue
+            self.history_tree.column(col, stretch="yes", minwidth=0, width=200)
+
+        self.history_tree.place(x=0,y=40 + 15)
+
+        for document in history:
+            history_data = ((
+            user_name, document))
+            self.history_tree.insert("", "end", values=history_data)
+
     def customer_borrow_book(self):
         # Seznam vybraných řádků
         selected_items = self.customer_tree.selection()
