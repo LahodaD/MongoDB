@@ -1,19 +1,23 @@
+import base64
 from io import BytesIO
+import io
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
 
-from Repositories.BooksRepository import create_book
+from Repositories.BooksRepository import create_book, find_all_documents, find_document_by_id
 from Repositories import ConnectToDatabase as db
 from Repositories import BooksRepository as books_repository
 from Repositories import UsersRepository as users_repository
 from Repositories import BorrowedRepository as borrowed_repository
+from Repositories import IORepository as io_repository
+
+from Services import ExportService as export_services
 
 class App:
     db_client = db.connect_to_mongodb()
     books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
-
 
     def __init__(self, root):
         self.root = root
@@ -23,6 +27,7 @@ class App:
         self.center_window()
         self.create_login_frame()        
         self.image_path = None
+        self.image_references = {}
 
     def center_window(self):
         screen_width = self.root.winfo_screenwidth()
@@ -32,8 +37,7 @@ class App:
         x = (screen_width//2) -401
         y = (screen_height//2) -140
         self.root.geometry("+{}+{}".format(x, y))
-
-    #Login okno
+    
     #TODO: přidat button pro registraci, přidat okno pro registraci
     def create_login_frame(self):
         self.login_frame = tk.Frame(self.root)
@@ -75,7 +79,6 @@ class App:
         else:
             print("does not match")
             messagebox.showerror("Login Failed", "Invalid username or password")
-
 
     def show_registration_window(self):
         self.registration_window = tk.Toplevel(self.root)
@@ -133,21 +136,76 @@ class App:
 ######################################################################################################################
 #Admin layout a funkce s ním spojené
 #TODO: přidat button zobrazující list čekajících úprav profilu a nových registrací, přidat dvojklikem možnost rozbalení knihy a upravení jejich parametrů
+        
+    def on_treeview_select(self, event):
+        selected_items = self.admin_tree.selection()
     
+        for item in selected_items:
+            # Extract the book ID from the selected item
+            book_id = tuple(self.admin_tree.item(item, "values"))[0]
+    
+            # Fetch the book document from the database
+            book_image = borrowed_repository.find_image_by_book_id(self.db_client, book_id)
+    
+            if book_image:
+                try:
+                    # Convert the string to bytes if it's in string format
+                    if isinstance(book_image, str):
+                        image_data = eval(book_image.encode())
+                    else:
+                        image_data = book_image
+
+                    # Display the book image in a centered window
+                    image_window = tk.Toplevel(self.root)
+                    image_window.title("Book Image")
+
+                    # Load the image from binary data
+                    image = Image.open(io.BytesIO(image_data))
+                    photo = ImageTk.PhotoImage(image)
+    
+                    # Get the screen width and height
+                    screen_width = self.root.winfo_screenwidth()
+                    screen_height = self.root.winfo_screenheight()
+    
+                    # Get the image width and height
+                    image_width = image.width
+                    image_height = image.height
+    
+                    # Calculate the center position for the window
+                    x_position = (screen_width - image_width) // 2
+                    y_position = (screen_height - image_height) // 2
+    
+                    # Set the window position
+                    image_window.geometry(f"{image_width}x{image_height}+{x_position}+{y_position}")
+    
+                    # Create and pack the image label
+                    image_label = tk.Label(image_window, image=photo)
+                    image_label.image = photo
+                    image_label.pack()
+    
+                except Exception as e:
+                    print(f"Error loading and displaying image: {e}")
+                    print(f"Book ID: {book_id}, Image Data: {book_image}")    
+            else:
+                print(f"No image found for book ID: {book_id}")
+    
+            break
+
     #Admin layout
     def show_admin_layout(self):
         self.login_frame.destroy()
+       
+        admin_frame = tk.Frame(self.root, width=1405, height=280)
         admin_frame = tk.Frame(self.root, width=1220, height=280)
         admin_frame.pack()
 
-        #Pozice tlačítka je řešena později
         logout_button = tk.Button(admin_frame, text="Logout", command=self.logout)
 
         #Definování sloupců u treeview
         columns = ("Id","Title", "Author", "Genre", "Pages", "Year", "Copies")
         self.sort_order = {col: True for col in columns}  #Keep track of sorting order (sestupně/vzestupně)
 
-        self.admin_tree = ttk.Treeview(admin_frame, columns=columns, show="headings")
+        self.admin_tree = ttk.Treeview(admin_frame, columns=columns, selectmode='browse', show="headings")
 
         for col in columns:
             self.admin_tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c))
@@ -158,8 +216,7 @@ class App:
             self.admin_tree.column(col, stretch="yes", minwidth=0, width=200)
 
         self.admin_tree.place(x=0,y=40 + 15)
-
-
+        self.admin_tree.bind("<Double-1>", self.on_treeview_select)
 
         logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
 
@@ -168,23 +225,18 @@ class App:
             books_data = ((document["_id"],document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
             self.admin_tree.insert("", "end", values=books_data)
 
-
-        #Delete button maže vybrané prvky v treeview
         delete_button = tk.Button(admin_frame, text="Delete", command=self.delete_selected, width=6)
-        delete_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=logout_button.winfo_reqheight())
+        delete_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth()), y=logout_button.winfo_reqheight())
 
 
-        #Add button přidává knihy nebo zvyšuje počet kopií
         add_button = tk.Button(admin_frame, text="Add Book", command=self.show_add_window)
-        add_button.place(x=(self.admin_tree.winfo_reqwidth()-delete_button.winfo_reqwidth()-add_button.winfo_reqwidth()-5), y=logout_button.winfo_reqheight())
+        add_button.place(x=(self.admin_tree.winfo_reqwidth() - delete_button.winfo_reqwidth() - add_button.winfo_reqwidth() - 5), y=logout_button.winfo_reqheight())
 
-        #Button pro vyhledávání v treeview
         search_button = tk.Button(admin_frame, text="Search", command=self.show_search_window)
-        search_button.place(x=(self.admin_tree.winfo_reqwidth()-delete_button.winfo_reqwidth()-add_button.winfo_reqwidth()-5), y=0)
+        search_button.place(x=(self.admin_tree.winfo_reqwidth() - delete_button.winfo_reqwidth() - add_button.winfo_reqwidth() - 5), y=0)
 
-        #Zrušení omezení vyhledávání
         cancel_search_button = tk.Button(admin_frame, text="Cancel Search", command=self.cancel_search)
-        cancel_search_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()-add_button.winfo_reqwidth()-cancel_search_button.winfo_reqwidth()-15), y=0)
+        cancel_search_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - 15), y=0)
 
         #Zobrazení okna s informacemi uživatele
         user_info_button = tk.Button(admin_frame, text="User info", command=self.show_user_info)
@@ -205,10 +257,22 @@ class App:
         users_button.place(x=(
                     self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - add_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - user_info_button.winfo_reqwidth() - users_button.winfo_reqwidth()- 20),
                                y=0)
+        #import dat databaze
+        import_button = tk.Button(admin_frame, text="Import", command=self.import_data)
+        import_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth() - cancel_search_button.winfo_reqwidth() - user_info_button.winfo_reqwidth() - users_button.winfo_reqwidth() - search_button.winfo_reqwidth() - 90), y=0)
 
-    #-------------------------------------------------------------------------------------------------------------------------
+        #export dat databaze
+        export_button = tk.Button(admin_frame, text="Export", command=self.export_data)
+        export_button.place(x=(self.admin_tree.winfo_reqwidth() - borrow_book_button.winfo_reqwidth() - borrow_view_button.winfo_reqwidth() - add_button.winfo_reqwidth() - delete_button.winfo_reqwidth() - 75), y=logout_button.winfo_reqheight())
+
+#-------------------------------------------------------------------------------------------------------------------------
 #Konec admin layoutu, níže jsou funkce pro admin layout
 #-------------------------------------------------------------------------------------------------------------------------
+    def import_data(self):
+        export_services.import_data_from_json(self.db_client, "./Backups/DatabaseBackup.json")
+
+    def export_data(self):
+        export_services.export_to_json(self.db_client, "./Backups/DatabaseBackup.json")
 
     #Vymaže vybranou knihu z treeview
     #TODO: implementovat mazání z databáze
@@ -222,7 +286,7 @@ class App:
             borrowed = borrowed_repository.find_document_by_book_id(self.db_client, id_of_book)
             if borrowed is not None:
                 print("book is borrowed")
-                messagebox.showerror("Book is borrowed", "Book can not be deletet. This book is borrowed")
+                messagebox.showerror("Book is borrowed", "Book can not be deleted. This book is borrowed")
                 return False
             books_repository.delete_by_id(self.db_client, id_of_book)
 
@@ -270,7 +334,7 @@ class App:
             print(user_history)
             #nahrání historie na DB
             users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {"History": user_history}})
-        #refresh
+        
         self.cancel_search()
 
 
@@ -343,24 +407,24 @@ class App:
             # Open the image using PIL
             img = Image.open(image_path)
             img.thumbnail((160, 160))  # Adjust size if needed
-    
+
             # Convert the PIL Image to a Tkinter PhotoImage
             tk_img = ImageTk.PhotoImage(img)
-    
+
             # Create a new frame for displaying the image (inside add_window)
             image_frame = tk.Frame(add_window)
             image_frame.grid(row=0, column=2, rowspan=6, columnspan=6, padx=5, pady=5, sticky="ne")
-    
+
             # Create a Canvas widget within the new frame to display the image
             canvas = tk.Canvas(image_frame, width=160, height=160)  # Adjust size as needed
             canvas.grid(row=0, column=0, sticky="nw")
-    
+
             # Draw the image on the Canvas
             canvas.create_image(0, 0, anchor="nw", image=tk_img)
-    
+
             # Keep a reference to the PhotoImage to prevent garbage collection
             canvas.image = tk_img
-    
+
         except Exception as e:
             # Handle the case where the image couldn't be loaded
             print(f"Error loading image: {e}")
@@ -414,7 +478,6 @@ class App:
                 return
             book_data = ((book["_id"],book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
             self.admin_tree.insert("", "end", values=book_data)
-
 
         #Close the search window
         search_window.destroy()
@@ -1101,6 +1164,9 @@ class App:
 
 #Customer layout, nedodělán
 #TODO: po dodělání admin layoutu zkopírovat ho a odstranit některé funkce (přidat edit profilu pro customera)
+
+
+
 
 
     def show_customer_layout(self):
