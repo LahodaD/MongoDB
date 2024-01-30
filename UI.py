@@ -13,6 +13,8 @@ from Repositories import UsersRepository as users_repository
 from Repositories import BorrowedRepository as borrowed_repository
 from Repositories import IORepository as io_repository
 
+from Services import ExportService as export_services
+
 class App:
     db_client = db.connect_to_mongodb()
     books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
@@ -214,7 +216,7 @@ class App:
             self.admin_tree.column(col, stretch="yes", minwidth=0, width=200)
 
         self.admin_tree.place(x=0,y=40 + 15)
-        self.admin_tree.bind("<<TreeviewSelect>>", self.on_treeview_select)
+        self.admin_tree.bind("<Double-1>", self.on_treeview_select)
 
         logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
 
@@ -267,10 +269,10 @@ class App:
 #Konec admin layoutu, níže jsou funkce pro admin layout
 #-------------------------------------------------------------------------------------------------------------------------
     def import_data(self):
-        io_repository.import_collections_from_json(self.db_client, "./Backups/DatabaseBackup.json")
+        export_services.import_data_from_json(self.db_client, "./Backups/DatabaseBackup.json")
 
     def export_data(self):
-        io_repository.export_all_collections_to_json(self.db_client, "./Backups/DatabaseBackup.json")
+        export_services.export_to_json(self.db_client, "./Backups/DatabaseBackup.json")
 
     #Vymaže vybranou knihu z treeview
     #TODO: implementovat mazání z databáze
