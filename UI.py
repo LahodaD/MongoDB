@@ -334,7 +334,7 @@ class App:
             print(user_history)
             #nahrání historie na DB
             users_repository.update_by_user_id(self.db_client, currentUser["_id"], {"$set": {"History": user_history}})
-        #refresh
+        
         self.cancel_search()
 
 
