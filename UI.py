@@ -820,6 +820,9 @@ class App:
         users_create_user_button = tk.Button(users_window, text="Create user", command=self.users_create_user)
         users_create_user_button.place(x=(self.users_tree.winfo_reqwidth()-users_confirm_button.winfo_reqwidth()-users_edit_button.winfo_reqwidth()-users_borrow_for_button.winfo_reqwidth()-users_create_user_button.winfo_reqwidth()-15), y=0)
 
+        users_show_history_button = tk.Button(users_window, text="Show History", command=self.users_show_history)
+        users_show_history_button.place(x=(self.users_tree.winfo_reqwidth()-users_confirm_button.winfo_reqwidth()-users_edit_button.winfo_reqwidth()-users_borrow_for_button.winfo_reqwidth()-users_create_user_button.winfo_reqwidth() - users_show_history_button.winfo_reqwidth()-20), y=0)
+
 
 
 
@@ -830,6 +833,10 @@ class App:
     #
     # -------------------------------------------------------------------------------------------------
 
+
+
+    def users_show_history(self):
+        return False
     def users_confirm(self):
         selected_items = self.users_tree.selection()
 
@@ -980,10 +987,10 @@ class App:
         self.entry_reg_username.grid(row=4, column=1)
         self.entry_reg_password.grid(row=5, column=1)
 
-        register_button = tk.Button(self.user_create_window, text="Register", command=self.register)
+        register_button = tk.Button(self.user_create_window, text="Register", command=self.users_register)
         register_button.grid(row=6, columnspan=2)
 
-    def register(self):
+    def users_register(self):
         name = self.entry_name.get()
         surname = self.entry_surname.get()
         birthdate = self.entry_birthdate.get()
@@ -1158,6 +1165,10 @@ class App:
         borrow_view_button = tk.Button(customer_frame, text="Borrowed books", command=self.show_borrowed_layout)
         borrow_view_button.pack()
 
+        users_show_history_button = tk.Button(customer_frame, text="Show History", command=self.customer_show_history)
+        users_show_history_button.pack()
+
+
         columns = ("Id", "Title", "Author", "Genre", "Pages", "Year", "Copies")
         self.customer_tree = ttk.Treeview(customer_frame, columns=columns, show="headings")
 
@@ -1179,6 +1190,11 @@ class App:
             self.customer_tree.insert("", "end", values=books_data)
 
 
+
+
+
+    def customer_show_history(self):
+        return False
     def customer_borrow_book(self):
         # Seznam vybraných řádků
         selected_items = self.customer_tree.selection()
