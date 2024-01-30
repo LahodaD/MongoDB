@@ -55,3 +55,11 @@ def update(db_client, criteria: dict, new_document):
 
 def update_by_user_id(db_client, user_id, new_document):
     db_client.Library.Borrowed.update_one({"UserID": ObjectId(user_id)}, new_document)
+
+def find_image_by_book_id(db_client, book_id):
+    book = db_client.Library.Books.find_one({"_id": ObjectId(book_id)})
+    if book and 'Picture' in book:
+        image_binary = book['Picture']
+        return image_binary
+    else:
+        return None

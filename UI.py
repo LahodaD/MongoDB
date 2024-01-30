@@ -1,11 +1,12 @@
 import base64
 from io import BytesIO
+import io
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
 
-from Repositories.BooksRepository import create_book, find_all_documents
+from Repositories.BooksRepository import create_book, find_all_documents, find_document_by_id
 from Repositories import ConnectToDatabase as db
 from Repositories import BooksRepository as books_repository
 from Repositories import UsersRepository as users_repository
@@ -15,7 +16,6 @@ from Repositories import IORepository as io_repository
 class App:
     db_client = db.connect_to_mongodb()
     books = [("Book1", "Author1", "Genre1", 5), ("Book2", "Author2", "Genre2", 3), ("Book3", "Author3", "Genre3", 7)]
-
 
     def __init__(self, root):
         self.root = root
@@ -78,7 +78,6 @@ class App:
             print("does not match")
             messagebox.showerror("Login Failed", "Invalid username or password")
 
-
     def show_registration_window(self):
         self.registration_window = tk.Toplevel(self.root)
         self.registration_window.title("Registration")
@@ -136,9 +135,64 @@ class App:
 #Admin layout a funkce s ním spojené
 #TODO: přidat button zobrazující list čekajících úprav profilu a nových registrací, přidat dvojklikem možnost rozbalení knihy a upravení jejich parametrů
         
+    def on_treeview_select(self, event):
+        selected_items = self.admin_tree.selection()
+    
+        for item in selected_items:
+            # Extract the book ID from the selected item
+            book_id = tuple(self.admin_tree.item(item, "values"))[0]
+    
+            # Fetch the book document from the database
+            book_image = borrowed_repository.find_image_by_book_id(self.db_client, book_id)
+    
+            if book_image:
+                try:
+                    # Convert the string to bytes if it's in string format
+                    if isinstance(book_image, str):
+                        image_data = eval(book_image.encode())
+                    else:
+                        image_data = book_image
+
+                    # Display the book image in a centered window
+                    image_window = tk.Toplevel(self.root)
+                    image_window.title("Book Image")
+
+                    # Load the image from binary data
+                    image = Image.open(io.BytesIO(image_data))
+                    photo = ImageTk.PhotoImage(image)
+    
+                    # Get the screen width and height
+                    screen_width = self.root.winfo_screenwidth()
+                    screen_height = self.root.winfo_screenheight()
+    
+                    # Get the image width and height
+                    image_width = image.width
+                    image_height = image.height
+    
+                    # Calculate the center position for the window
+                    x_position = (screen_width - image_width) // 2
+                    y_position = (screen_height - image_height) // 2
+    
+                    # Set the window position
+                    image_window.geometry(f"{image_width}x{image_height}+{x_position}+{y_position}")
+    
+                    # Create and pack the image label
+                    image_label = tk.Label(image_window, image=photo)
+                    image_label.image = photo
+                    image_label.pack()
+    
+                except Exception as e:
+                    print(f"Error loading and displaying image: {e}")
+                    print(f"Book ID: {book_id}, Image Data: {book_image}")    
+            else:
+                print(f"No image found for book ID: {book_id}")
+    
+            break
+
     #Admin layout
     def show_admin_layout(self):
         self.login_frame.destroy()
+       
         admin_frame = tk.Frame(self.root, width=1405, height=280)
         admin_frame = tk.Frame(self.root, width=1220, height=280)
         admin_frame.pack()
@@ -160,8 +214,7 @@ class App:
             self.admin_tree.column(col, stretch="yes", minwidth=0, width=200)
 
         self.admin_tree.place(x=0,y=40 + 15)
-
-
+        self.admin_tree.bind("<<TreeviewSelect>>", self.on_treeview_select)
 
         logout_button.place(x=(self.admin_tree.winfo_reqwidth()-logout_button.winfo_reqwidth()),y=0)
 
@@ -169,7 +222,6 @@ class App:
         for document in books_repository.find_all_documents(self.db_client):
             books_data = ((document["_id"],document["Title"], document["Author"], document["Genre"], document["Pages"], document["Year"], document["Copies"]))
             self.admin_tree.insert("", "end", values=books_data)
-
 
         delete_button = tk.Button(admin_frame, text="Delete", command=self.delete_selected, width=6)
         delete_button.place(x=(self.admin_tree.winfo_reqwidth() - logout_button.winfo_reqwidth()), y=logout_button.winfo_reqheight())
@@ -232,7 +284,7 @@ class App:
             borrowed = borrowed_repository.find_document_by_book_id(self.db_client, id_of_book)
             if borrowed is not None:
                 print("book is borrowed")
-                messagebox.showerror("Book is borrowed", "Book can not be deletet. This book is borrowed")
+                messagebox.showerror("Book is borrowed", "Book can not be deleted. This book is borrowed")
                 return False
             books_repository.delete_by_id(self.db_client, id_of_book)
 
@@ -424,7 +476,6 @@ class App:
                 return
             book_data = ((book["_id"],book["Title"], book["Author"], book["Genre"], book["Pages"], book["Year"], book["Copies"]))
             self.admin_tree.insert("", "end", values=book_data)
-
 
         #Close the search window
         search_window.destroy()
