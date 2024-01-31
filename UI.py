@@ -541,6 +541,7 @@ class App:
                     book_data = tuple(self.admin_tree.item(item, "values"))
                     App.books.append(book_data)
 
+            self.cancel_search()
             # Close the add window
             add_window.destroy()
 
